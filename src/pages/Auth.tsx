@@ -61,9 +61,16 @@ export default function Auth() {
 
     try {
       if (isSignUp) {
-        const { error } = await signUp(email, password, fullName);
+        const { error, needsEmailConfirmation } = await signUp(email, password, fullName);
         if (error) {
-          if (error.message.includes('already registered')) {
+          const normalizedError = error.message.toLowerCase();
+          if (normalizedError.includes('rate limit')) {
+            toast({
+              title: 'Too many confirmation emails',
+              description: 'Supabase temporarily limited email sending. Wait a few minutes, then try again. If you already created this account, use Sign in after confirming your email.',
+              variant: 'destructive',
+            });
+          } else if (normalizedError.includes('already registered')) {
             toast({
               title: 'Account exists',
               description: 'This email is already registered. Please sign in instead.',
@@ -76,6 +83,13 @@ export default function Auth() {
               variant: 'destructive',
             });
           }
+        } else if (needsEmailConfirmation) {
+          toast({
+            title: 'Check your email',
+            description: 'Your account is ready. Confirm your email address before signing in.',
+          });
+          setIsSignUp(false);
+          setPassword('');
         } else {
           toast({
             title: 'Welcome to SkinWise!',
@@ -86,9 +100,14 @@ export default function Auth() {
       } else {
         const { error } = await signIn(email, password);
         if (error) {
+          const message = error.message.toLowerCase().includes('email not confirmed')
+            ? 'Please confirm your email address before signing in.'
+            : error.message.toLowerCase().includes('invalid login credentials')
+              ? 'The email or password is incorrect.'
+              : error.message;
           toast({
             title: 'Sign in failed',
-            description: 'Invalid email or password. Please try again.',
+            description: message,
             variant: 'destructive',
           });
         } else {

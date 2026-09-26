@@ -119,9 +119,13 @@ bun install
 Create a `.env` file in the root and add your Supabase connection strings:
 
 ```env
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key-here
+VITE_SUPABASE_URL=https://kajrforgzdgsohvwnidu.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key-here
 ```
+
+The app is configured to use the SkinWise Supabase project shown above for all
+production deployments. Keep the database migrations in `supabase/migrations`
+applied to that same project.
 
 ### 4. Run the Application
 

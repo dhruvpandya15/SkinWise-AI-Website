@@ -12,6 +12,80 @@ import { ProductFeedback } from '@/components/ProductFeedback';
 import { FavoriteButton } from '@/components/FavoriteButton';
 import { BrandLogo } from '@/components/BrandLogo';
 
+function createFallbackRecommendations(assessment: {
+  skin_type: string;
+  skin_concerns: string[] | null;
+  budget_range: string | null;
+}) {
+  const concerns = assessment.skin_concerns?.join(', ') || 'your skin goals';
+  const searchUrl = (brand: string, name: string) =>
+    `https://www.amazon.in/s?k=${encodeURIComponent(`${brand} ${name}`)}`;
+
+  const products: Product[] = [
+    {
+      name: 'Gentle Skin Cleanser',
+      brand: 'Cetaphil',
+      description: 'A gentle cleanser that removes dirt without stripping the skin.',
+      keyIngredients: ['Glycerin', 'Niacinamide'],
+      skinTypeSuitability: [assessment.skin_type],
+      priceRange: '₹399–₹699',
+      productUrl: searchUrl('Cetaphil', 'Gentle Skin Cleanser'),
+      whySuitable: `A gentle starting cleanser for ${assessment.skin_type} skin and concerns such as ${concerns}.`,
+      usageInstructions: 'Use morning and night on damp skin, then rinse.',
+    },
+    {
+      name: 'Ceramide Moisturising Cream',
+      brand: 'CeraVe',
+      description: 'A barrier-supporting moisturizer for daily hydration.',
+      keyIngredients: ['Ceramides', 'Hyaluronic Acid'],
+      skinTypeSuitability: [assessment.skin_type],
+      priceRange: '₹899–₹1,299',
+      productUrl: searchUrl('CeraVe', 'Moisturising Cream'),
+      whySuitable: 'Helps support the skin barrier and reduce dryness or irritation.',
+      usageInstructions: 'Apply after cleansing, morning and night.',
+    },
+    {
+      name: '10% Niacinamide Face Serum',
+      brand: 'The Derma Co',
+      description: 'A niacinamide serum for oil control and uneven-looking skin tone.',
+      keyIngredients: ['Niacinamide', 'Zinc'],
+      skinTypeSuitability: ['oily', 'combination', 'normal'],
+      priceRange: '₹499–₹599',
+      productUrl: searchUrl('The Derma Co', '10 Niacinamide Face Serum'),
+      whySuitable: `May help with visible oiliness, pores, and uneven tone related to ${concerns}.`,
+      usageInstructions: 'Apply 2–3 drops at night after cleansing, three times weekly initially.',
+    },
+    {
+      name: 'Ultra Matte Sunscreen Gel SPF 50',
+      brand: 'Re’equil',
+      description: 'A broad-spectrum sunscreen for daily UV protection.',
+      keyIngredients: ['UV Filters', 'Vitamin E'],
+      skinTypeSuitability: [assessment.skin_type],
+      priceRange: '₹695–₹795',
+      productUrl: searchUrl('Reequil', 'Ultra Matte Sunscreen Gel SPF 50'),
+      whySuitable: 'Daily sunscreen helps prevent darkening of spots and protects the overall routine.',
+      usageInstructions: 'Apply generously as the last morning skincare step and reapply outdoors.',
+    },
+    {
+      name: '2% Salicylic Acid Face Serum',
+      brand: 'Minimalist',
+      description: 'A targeted exfoliating serum for clogged pores and breakouts.',
+      keyIngredients: ['Salicylic Acid'],
+      skinTypeSuitability: ['oily', 'combination'],
+      priceRange: '₹549–₹599',
+      productUrl: searchUrl('Minimalist', '2 Salicylic Acid Face Serum'),
+      whySuitable: 'A targeted option for congestion and breakouts when salicylic acid is suitable for you.',
+      usageInstructions: 'Use at night once or twice weekly; do not combine with other strong actives.',
+      safetyWarnings: 'Patch test first and stop if irritation occurs.',
+    },
+  ];
+
+  return {
+    summary: `Here is a starter routine for ${assessment.skin_type} skin focused on ${concerns}. The AI recommendation service is temporarily unavailable, so these general products are provided as a safe fallback. Patch test new products and consult a dermatologist for persistent concerns.`,
+    products,
+  };
+}
+
 export default function Results() {
   const { assessmentId } = useParams();
   const { user } = useAuth();
@@ -74,16 +148,22 @@ export default function Results() {
         body: { assessment, facePhoto },
       });
 
-      if (fnError) throw fnError;
+      const recommendationData = fnError || !data?.products?.length
+        ? createFallbackRecommendations(assessment)
+        : data;
 
-      setProducts(data.products || []);
-      setAiSummary(data.summary || '');
+      if (fnError) {
+        console.warn('AI recommendation service unavailable; using fallback products:', fnError.message);
+      }
+
+      setProducts(recommendationData.products);
+      setAiSummary(recommendationData.summary);
 
       const { data: savedRec, error: saveError } = await supabase.from('recommendations').insert({
         assessment_id: assessmentId,
         user_id: user!.id,
-        products: data.products,
-        ai_summary: data.summary,
+        products: recommendationData.products,
+        ai_summary: recommendationData.summary,
       }).select('id').single();
 
       if (saveError) throw saveError;

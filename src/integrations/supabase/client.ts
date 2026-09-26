@@ -2,8 +2,10 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// These browser-safe credentials intentionally point every deployment to the
+// project's single Supabase backend.
+const SUPABASE_URL = 'https://kajrforgzdgsohvwnidu.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_q4uapdSqQzAI4TQOk0XAZA_4YV33H81';
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";

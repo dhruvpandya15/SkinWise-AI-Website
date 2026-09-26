@@ -6,7 +6,10 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, fullName?: string) => Promise<{
+    error: Error | null;
+    needsEmailConfirmation: boolean;
+  }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
 }
@@ -38,11 +41,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
+  const saveProfile = async (authUser: User, fullName?: string) => {
+    const profileName = fullName?.trim() || authUser.user_metadata?.full_name?.trim() || null;
+    const { error } = await supabase.from('profiles').upsert(
+      {
+        user_id: authUser.id,
+        email: authUser.email ?? null,
+        full_name: profileName,
+      },
+      { onConflict: 'user_id' },
+    );
+
+    return error as Error | null;
+  };
+
   const signUp = async (email: string, password: string, fullName?: string) => {
     const redirectUrl = `${window.location.origin}/`;
 
-    const { error } = await supabase.auth.signUp({
-      email,
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim().toLowerCase(),
       password,
       options: {
         emailRedirectTo: redirectUrl,
@@ -52,16 +69,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
     });
 
-    return { error: error as Error | null };
+    const profileError = !error && data.session && data.user
+      ? await saveProfile(data.user, fullName)
+      : null;
+
+    return {
+      error: (error || profileError) as Error | null,
+      // Supabase returns no session when email confirmation is enabled.
+      needsEmailConfirmation: !error && !data.session,
+    };
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim().toLowerCase(),
       password,
     });
 
-    return { error: error as Error | null };
+    const profileError = !error && data.user ? await saveProfile(data.user) : null;
+
+    return { error: (error || profileError) as Error | null };
   };
 
   const signOut = async () => {

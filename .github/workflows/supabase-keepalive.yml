@@ -1,0 +1,80 @@
+# ──────────────────────────────────────────────────────────────────────
+# Supabase Free-Tier Keep-Alive
+# ──────────────────────────────────────────────────────────────────────
+# WHY THIS EXISTS:
+#   Supabase pauses Free Plan projects after 7 days without database
+#   activity. This workflow fires daily and executes a write (PATCH)
+#   query against the "_heartbeat" table to guarantee PostgreSQL
+#   transaction activity is logged by Supabase.
+#
+# SECRETS REQUIRED (set in repo Settings → Secrets → Actions):
+#   SUPABASE_URL            – e.g. https://xxxx.supabase.co
+#   SUPABASE_SERVICE_ROLE_KEY – the service_role key (NOT the anon key)
+# ──────────────────────────────────────────────────────────────────────
+
+name: Supabase Keep-Alive
+
+on:
+  schedule:
+    # Run every day at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:          # allow manual "Run workflow" button
+
+permissions:
+  contents: write             # needed for the commit-back step
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      # ── 1. Update the _heartbeat table via the Supabase REST API ───
+      - name: Ping Supabase database with write operation
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "→ Sending keepalive write (UPSERT) to $SUPABASE_URL/rest/v1/_heartbeat ..."
+
+          HTTP_CODE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -X POST "${SUPABASE_URL}/rest/v1/_heartbeat" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: resolution=merge-duplicates,return=minimal" \
+            -d "{\"id\": 1, \"note\": \"keepalive ping ${TIMESTAMP}\"}")
+
+          echo "HTTP status: $HTTP_CODE"
+          if [ -f /tmp/response.json ]; then
+            echo "Response body:"
+            cat /tmp/response.json || true
+          fi
+
+          if [ "$HTTP_CODE" -lt 200 ] || [ "$HTTP_CODE" -ge 300 ]; then
+            echo "::error::Supabase heartbeat query failed with HTTP $HTTP_CODE"
+            exit 1
+          fi
+
+          echo ""
+          echo "✓ Supabase write ping successful at ${TIMESTAMP}."
+
+      # ── 2. Commit a timestamp so the repo stays "active" ───────────
+      - name: Append heartbeat log & push
+        run: |
+          set -euo pipefail
+
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          echo "${TIMESTAMP} | ok" >> .github/keepalive-log.txt
+
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add .github/keepalive-log.txt
+          git commit -m "chore: supabase keepalive heartbeat ${TIMESTAMP} [skip ci]" || echo "Nothing to commit"
+          git push || (git pull --rebase && git push)
+

@@ -1,0 +1,15 @@
+<svg viewBox="0 0 160 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bowlby+One+SC&amp;family=Great+Vibes&amp;display=swap');
+    .skin { font-family: 'Great Vibes', cursive; font-size: 48px; font-weight: normal; fill: #c39b6d; }
+    .wise { font-family: 'Bowlby One SC', serif; font-size: 28px; font-weight: normal; letter-spacing: 0.05em; fill: #f0b24f; }
+  </style>
+  <defs>
+    <path id="tapered-star" d="M10 0C10 0 11.5 7.5 18 10C11.5 12.5 10 20 10 20C10 20 8.5 12.5 2 10C8.5 7.5 10 0 10 0Z" />
+  </defs>
+  <use href="#tapered-star" x="15" y="15" transform="scale(0.4)" fill="#f0b24f" />
+  <use href="#tapered-star" x="115" y="35" transform="scale(1.2)" fill="#f0b24f" />
+  <use href="#tapered-star" x="20" y="65" transform="scale(0.5)" fill="#f0b24f" />
+  <text x="80" y="45" textAnchor="middle" class="skin">Skin</text>
+  <text x="88" y="75" textAnchor="middle" class="wise">wise</text>
+</svg>

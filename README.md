@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🌿 SkinWise Advisor
+# 🌿 SkinWise - Skin Analysis & Product Recommendation
 
 ### Intelligent Skincare Recommendation Platform
 
